@@ -2,73 +2,129 @@ package org.example.server.network;
 
 import org.example.common.Request;
 import org.example.common.Response;
+import org.example.common.util.SerializationUtil;
 import org.example.server.handlers.RequestHandler;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.net.ServerSocket;
+import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.nio.ByteBuffer;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
+import java.util.Iterator;
+import java.util.Set;
 
 public class ServerNetworkManager {
-    private ServerSocket serverSocket;
+    private ServerSocketChannel serverChannel;
     private int port;
+    private Selector selector;
+    private static final int BUFFER_SIZE = 8192;
 
-    public ServerNetworkManager(int port) throws IOException{
+    public ServerNetworkManager(int port) {
         this.port = port;
-        this.serverSocket = new ServerSocket(port);
-        System.out.println("Сервер создан на порту " + port);
     }
 
     public void start(RequestHandler handler){
-        System.out.println("Сервер запущен");
-
-        while (true) {
-            try {
-                Socket clientSocket = serverSocket.accept();
-                System.out.println("Новый клиент: " + clientSocket.getInetAddress());
-                handleClient(clientSocket, handler);
-            } catch (IOException e){
-                System.err.println("Ошибка при подключения: " + e.getMessage());
-            }
-        }
-    }
-
-    private void handleClient(Socket clientSocket, RequestHandler requestHandler){
-        try (ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream());
-             ObjectOutputStream out = new ObjectOutputStream(clientSocket.getOutputStream())) {
-
-            Request request = (Request) in.readObject();
-            System.out.println("Получен запрос: " + request.getName());
-
-            Response response = requestHandler.handle(request);
-
-            out.writeObject(response);
-            out.flush();
-            System.out.println("Ответ отправлен: " + response.getMessage());
-
-        } catch (IOException e) {
-            System.out.println("Ошибка сети: " + e.getMessage());
-        } catch (ClassNotFoundException e) {
-            System.out.println("Неизвестный класс: " + e.getMessage());
-        } finally {
-            try {
-                clientSocket.close();
-                System.out.println("Клиент отключен");
-            } catch (IOException e) {
-
-            }
-        }
-    }
-
-    public void close(){
         try {
-            if (serverSocket != null && !serverSocket.isClosed()){
-                serverSocket.close();
-                System.out.println("Сервер закрыт");
+            serverChannel = ServerSocketChannel.open();
+            serverChannel.configureBlocking(false);
+            serverChannel.bind(new InetSocketAddress(port));
+
+            selector = Selector.open();
+            serverChannel.register(selector, SelectionKey.OP_ACCEPT);
+
+            System.out.println("Сервер запущен на порту " + port);
+            System.out.println("Ожидание подключений...");
+
+            while (true) {
+                selector.select();
+
+                Set<SelectionKey> selectedKeys = selector.selectedKeys();
+                Iterator<SelectionKey> iterator = selectedKeys.iterator();
+
+                while (iterator.hasNext()) {
+                    SelectionKey key = iterator.next();
+                    iterator.remove();
+
+                    try {
+                        if (key.isAcceptable()) {
+                            handleAccept(key);
+                        }
+                        if (key.isReadable()) {
+                            handleRead(key, handler);
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Ошибка обработки: " + e.getMessage());
+                        e.printStackTrace();
+                        key.cancel();
+                        try { key.channel().close(); } catch (IOException ex) {}
+                    }
+                }
             }
-        } catch (IOException e){
-            System.out.println("Ошибка при закрытие сервера: " + e.getMessage());
+        } catch (IOException e) {
+            System.err.println("Ошибка сервера: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private void handleAccept(SelectionKey key) throws IOException{
+        ServerSocketChannel serverChannel = (ServerSocketChannel) key.channel();
+        SocketChannel clientChannel = serverChannel.accept();
+
+        if (clientChannel != null) {
+            clientChannel.configureBlocking(false);
+            clientChannel.register(selector, SelectionKey.OP_READ, ByteBuffer.allocate(BUFFER_SIZE));
+            System.out.println("Новый клиент: " + clientChannel.getRemoteAddress());
+        }
+    }
+
+    private void handleRead(SelectionKey key, RequestHandler handler) throws IOException, ClassNotFoundException{
+        SocketChannel clientChannel = (SocketChannel) key.channel();
+        ByteBuffer buffer = (ByteBuffer) key.attachment();
+
+        // Читаем данные в буфер
+        int bytesRead = clientChannel.read(buffer);
+        if (bytesRead == -1) {
+            // Клиент отключился
+            key.cancel();
+            clientChannel.close();
+            System.out.println("🔌 Клиент отключён");
+            return;
+        }
+
+        if (bytesRead > 0) {
+            buffer.flip();  // ← Переключаем на чтение
+
+            // Десериализуем Request
+            Request request = (Request) SerializationUtil.deserialize(buffer);
+            System.out.println("📥 Получен запрос: " + request.getName());
+
+            // Обрабатываем
+            Response response = handler.handle(request);
+
+            // Сериализуем и отправляем ответ
+            ByteBuffer responseBuffer = SerializationUtil.serialize(response);
+            while (responseBuffer.hasRemaining()) {
+                clientChannel.write(responseBuffer);
+            }
+            System.out.println("📤 Ответ отправлен: " + response.getMessage());
+
+            buffer.clear();
+        }
+    }
+
+
+    public void stop(){
+        try {
+            if (selector != null) selector.close();
+            if (serverChannel != null) serverChannel.close();
+            System.out.println("Сервер остановлен");
+        } catch (IOException e) {
+            System.err.println("Ошибка при остановке: " + e.getMessage());
         }
     }
 }

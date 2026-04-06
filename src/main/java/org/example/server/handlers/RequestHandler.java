@@ -17,7 +17,7 @@ public class RequestHandler {
         Command command = commandManager.getCommand(name);
 
         if (command == null){
-            System.out.println("Неизвестная комнада");
+            return new Response(false, "Неизвестная команда: " + name, null);
         }
 
         try {

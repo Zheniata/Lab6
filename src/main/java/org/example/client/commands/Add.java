@@ -12,13 +12,14 @@ import java.util.Scanner;
 
 public class Add extends Command{
     private final ClientNetworkManager network;
-    public Add(String name, Scanner scanner, ClientNetworkManager network){
-        super(name, scanner);
+    private final Scanner scanner;
+    public Add(Scanner scanner, ClientNetworkManager network){
         this.network = network;
+        this.scanner = scanner;
     }
 
     @Override
-    public void execute() {
+    public void execute(String argument) {
         String name;
         while (true){
             try {
@@ -131,6 +132,7 @@ public class Add extends Command{
         }
         catch (Exception e){
             System.out.println(e.getMessage());
+            e.printStackTrace();
         }
 
     }

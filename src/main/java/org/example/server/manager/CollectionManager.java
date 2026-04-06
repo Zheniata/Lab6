@@ -5,6 +5,7 @@ import org.example.common.models.Organization;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class CollectionManager {
     private PriorityQueue<Organization> collection = new PriorityQueue<Organization>();
@@ -13,8 +14,8 @@ public class CollectionManager {
     private final XmlFileManager fileManager;
     private final Set<Long> usedIds = new HashSet<>();
 
-    public CollectionManager(XmlFileManager fileManager){
-        this.fileManager = fileManager;
+    public CollectionManager(XmlFileManager xmlFileManager){
+        this.fileManager = xmlFileManager;
         loadCollection();
     }
 
@@ -51,7 +52,7 @@ public class CollectionManager {
      * @return новый уникальный ID
      */
 
-    public long getNextAvailableId() {
+    public synchronized long getNextAvailableId() {
         long id = 1;
         while (usedIds.contains(id)) {
             id++;
@@ -65,7 +66,7 @@ public class CollectionManager {
      * Обновляет время последнего сохранения.
      */
 
-    public void saveCollection(){
+    public synchronized void saveCollection(){
         try {
             fileManager.writeCollection(new ArrayList<>(collection));
             lastSaveTime = LocalDateTime.now();
@@ -97,7 +98,7 @@ public class CollectionManager {
      * @param element организация для добавления
      */
 
-    public void addToCollection(Organization element){
+    public synchronized void addToCollection(Organization element){
         collection.add(element);
     }
 
@@ -107,7 +108,7 @@ public class CollectionManager {
      * @param element организация для удаления
      */
 
-    public void removeFromCollection(Organization element){
+    public synchronized void removeFromCollection(Organization element){
         collection.remove(element);
     }
 
@@ -131,8 +132,9 @@ public class CollectionManager {
      * Полностью очищает коллекцию.
      */
 
-    public void clearCollection(){
+    public synchronized void clearCollection(){
         collection.clear();
+        usedIds.clear();
     }
 
     /**
@@ -182,6 +184,12 @@ public class CollectionManager {
      */
     public LocalDateTime getLastSaveTime() {
         return lastSaveTime;
+    }
+
+    public String show() {
+        return collection.stream().sorted(Comparator.comparingDouble(Organization::getAnnualTurnover))
+                .map(Organization::toString)
+                .collect(Collectors.joining("\n"));
     }
 }
 
