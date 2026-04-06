@@ -86,10 +86,8 @@ public class ServerNetworkManager {
         SocketChannel clientChannel = (SocketChannel) key.channel();
         ByteBuffer buffer = (ByteBuffer) key.attachment();
 
-        // Читаем данные в буфер
         int bytesRead = clientChannel.read(buffer);
         if (bytesRead == -1) {
-            // Клиент отключился
             key.cancel();
             clientChannel.close();
             System.out.println("🔌 Клиент отключён");
@@ -97,21 +95,18 @@ public class ServerNetworkManager {
         }
 
         if (bytesRead > 0) {
-            buffer.flip();  // ← Переключаем на чтение
+            buffer.flip();
 
-            // Десериализуем Request
             Request request = (Request) SerializationUtil.deserialize(buffer);
-            System.out.println("📥 Получен запрос: " + request.getName());
+            System.out.println("Получен запрос: " + request.getName());
 
-            // Обрабатываем
             Response response = handler.handle(request);
 
-            // Сериализуем и отправляем ответ
             ByteBuffer responseBuffer = SerializationUtil.serialize(response);
             while (responseBuffer.hasRemaining()) {
                 clientChannel.write(responseBuffer);
             }
-            System.out.println("📤 Ответ отправлен: " + response.getMessage());
+            System.out.println("Ответ отправлен: " + response.getMessage());
 
             buffer.clear();
         }
