@@ -187,10 +187,5 @@ public class CollectionManager {
         return lastSaveTime;
     }
 
-    public String show() {
-        return collection.stream().sorted(Comparator.comparingDouble(Organization::getAnnualTurnover))
-                .map(Organization::toString)
-                .collect(Collectors.joining("\n"));
-    }
 }
 

@@ -102,6 +102,10 @@ public class ExecuteScript extends Command{
                 System.out.println(response.getMessage());
             }
 
+            if (response.getData() != null){
+                System.out.println(response.getData());
+            }
+
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

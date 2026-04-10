@@ -12,13 +12,14 @@ public class ClientApp {
 
     public static void main(String[] args){
         Scanner scanner = new Scanner(System.in);
+        ClientNetworkManager network = new ClientNetworkManager(host, port);
+        network.connect();
         try {
-            ClientNetworkManager network = new ClientNetworkManager(host, port);
             Runner runner = new Runner(scanner, network);
             runner.interactiveMode();
             network.disconnect();
-        } catch (IOException e){
-            System.err.println("Ошибка подключения: " + e.getMessage());
+        } catch (Exception e){
+            System.err.println("Ошибка: " + e.getMessage());
             e.printStackTrace();
             System.exit(1);
         }

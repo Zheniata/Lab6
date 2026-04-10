@@ -28,7 +28,9 @@ public class Update extends Command{
                 System.out.println("Неверный формат команды, введите id");
                 return;
             }
-            String idArg = argument.trim();
+            String idArg = argument.trim().toLowerCase()
+                    .replaceAll("^id\\s+", "")
+                    .trim();;
 
             Organization updatedOrg = updatedOrganization(idArg);
 

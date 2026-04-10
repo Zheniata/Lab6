@@ -29,6 +29,7 @@ public class Runner {
         commands.put("remove_by_id", new RemoveById(networkManager));
         commands.put("remove_any_by_official_address", new RemoveAnyByOfficialAddress(networkManager));
         commands.put("update", new Update(scanner, networkManager));
+        commands.put("execute_script", new ExecuteScript(networkManager, scanner));
         commands.put("exit", new Exit());
     }
 
