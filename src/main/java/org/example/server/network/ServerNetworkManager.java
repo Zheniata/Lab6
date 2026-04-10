@@ -90,7 +90,7 @@ public class ServerNetworkManager {
         if (bytesRead == -1) {
             key.cancel();
             clientChannel.close();
-            System.out.println("🔌 Клиент отключён");
+            System.out.println("Клиент отключён");
             return;
         }
 

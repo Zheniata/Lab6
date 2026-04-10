@@ -110,6 +110,7 @@ public class CollectionManager {
 
     public synchronized void removeFromCollection(Organization element){
         collection.remove(element);
+        usedIds.remove(element.getId());
     }
 
     /**

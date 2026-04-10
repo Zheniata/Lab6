@@ -5,39 +5,44 @@ import org.example.common.Request;
 import org.example.common.Response;
 import org.example.common.exceptions.MustBeNotEmptyException;
 import org.example.common.exceptions.ValidationException;
-import org.example.common.models.*;
+import org.example.common.models.Address;
+import org.example.common.models.Organization;
+import org.example.common.models.OrganizationType;
+import org.example.common.models.Coordinates;
 
-import java.io.IOException;
-import java.time.LocalDate;
+
 import java.util.Scanner;
 
-public class Add extends Command{
-    private final ClientNetworkManager network;
-    private final Scanner scanner;
-    public Add(Scanner scanner, ClientNetworkManager network){
-        this.network = network;
+public class Update extends Command{
+    ClientNetworkManager clientNetworkManager;
+    Scanner scanner;
+    public Update(Scanner scanner, ClientNetworkManager clientNetworkManager){
+        this.clientNetworkManager = clientNetworkManager;
         this.scanner = scanner;
     }
 
     @Override
     public void execute(String argument) {
         try {
-            Organization organization;
-
-            if (argument != null && !argument.isEmpty() && argument.contains("{")) {
-                organization = parseOrganization(argument);
-            } else {
-                organization = interactiveOrganization();
+            if (argument == null || argument.trim().isEmpty()) {
+                System.out.println("Неверный формат команды, введите id");
+                return;
             }
-            Request request = new Request("add", null, organization);
-            Response response = network.sendRequest(request);
+            String idArg = argument.trim();
+
+            Organization updatedOrg = updatedOrganization(idArg);
+
+            Request request = new Request("update", idArg,  updatedOrg);
+            Response response = clientNetworkManager.sendRequest(request);
             System.out.println(response.getMessage());
-        } catch (Exception e) {
+        } catch (Exception e){
             System.out.println("Произошла ошибка: " + e.getMessage());
         }
     }
 
-    private Organization interactiveOrganization() throws Exception{
+    private Organization updatedOrganization(String idArg) throws Exception{
+        System.out.println("Введите новые данные для организации");
+
         String name;
         while (true){
             try {
@@ -135,79 +140,6 @@ public class Add extends Command{
         } else {
             address = null;
         }
-
-        Organization organization = new Organization(name, coordinates, annualTurnover, type, address);
-        return organization;
-    }
-
-    public static Organization parseOrganization(String argument) throws Exception{
-        int startBrace = argument.indexOf('{');
-        int endBrace = argument.lastIndexOf('}');
-
-        if (startBrace == -1 || endBrace == -1 || endBrace <= startBrace) {
-            throw new Exception("Неверный формат скобок");
-        }
-        String content = argument.substring(startBrace + 1, endBrace).trim();
-
-        String[] pairs = content.split(",(?=([^\']*\'[^\']*\')*[^\']*$)");
-
-        String name = null;
-        Double x = null;
-        Long y = null;
-        Float annualTurnover = null;
-        OrganizationType type = null;
-        String street = null;
-        String zipCode = null;
-
-        for (String pair : pairs) {
-            pair = pair.trim();
-            if (!pair.contains("=")) {
-                throw new Exception("Некорректная пара: " + pair);
-            }
-
-            String[] kv = pair.split("=", 2);
-            if (kv.length < 2) {
-                throw new Exception("Не хватает значения в паре: " + pair);
-            }
-
-            String key = kv[0].trim();
-            String value = kv[1].trim();
-
-            if (value.startsWith("'") && value.endsWith("'")) {
-                value = value.substring(1, value.length() - 1);
-            }
-
-            try {
-                switch (key) {
-                    case "name" -> name = value;
-                    case "x" -> x = Double.parseDouble(value);
-                    case "y" -> y = Long.parseLong(value);
-                    case "annualTurnover" -> annualTurnover = Float.parseFloat(value);
-                    case "type" -> type = OrganizationType.valueOf(value.toUpperCase());
-                    case "street" -> street = value;
-                    case "zipCode" -> zipCode = value;
-                    default -> throw new Exception("Неизвестное поле: '" + key + "'");
-                }
-            } catch (Exception e) {
-                throw new Exception("Ошибка в поле '" + key + "': " + e.getMessage());
-            }
-        }
-        if (name == null || name.isEmpty()) {
-            throw new Exception("Имя обязательно");
-        }
-        if (x == null || y == null) {
-            throw new Exception("Координаты x и y обязательны");
-        }
-        if (annualTurnover == null || annualTurnover <= 0) {
-            throw new Exception("annualTurnover должен быть > 0");
-        }
-        if (type == null) {
-            throw new Exception("Тип обязателен");
-        }
-
-        Coordinates coordinates = new Coordinates(x, y);
-        Address address = (street != null || zipCode != null) ? new Address(street, zipCode) : null;
-
         return new Organization(name, coordinates, annualTurnover, type, address);
     }
 }

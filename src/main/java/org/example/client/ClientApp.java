@@ -14,10 +14,8 @@ public class ClientApp {
         Scanner scanner = new Scanner(System.in);
         try {
             ClientNetworkManager network = new ClientNetworkManager(host, port);
-
             Runner runner = new Runner(scanner, network);
             runner.interactiveMode();
-
             network.disconnect();
         } catch (IOException e){
             System.err.println("Ошибка подключения: " + e.getMessage());

@@ -1,5 +1,6 @@
 package org.example.server.manager;
 
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
@@ -22,6 +23,9 @@ public class XmlFileManager {
                 .defaultUseWrapper(false)
                 .build();
         this.xmlMapper.registerModule(new JavaTimeModule());
+
+        this.xmlMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
 
         this.xmlMapper.setSerializationInclusion(JsonInclude.Include.ALWAYS);
         this.filePath = Path.of(fileName);

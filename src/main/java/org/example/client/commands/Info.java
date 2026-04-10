@@ -4,27 +4,22 @@ import org.example.client.network.ClientNetworkManager;
 import org.example.common.Request;
 import org.example.common.Response;
 
-import javax.imageio.IIOException;
 import java.io.IOException;
 
-public class Show extends Command{
+public class Info extends Command{
     ClientNetworkManager networkManager;
-    public Show(ClientNetworkManager networkManager){
+    public Info(ClientNetworkManager networkManager){
         this.networkManager = networkManager;
     }
 
     @Override
     public void execute(String argument) {
         try{
-            Request request = new Request("show", null, null);
+            Request request = new Request("info", null, null);
             Response response = networkManager.sendRequest(request);
             System.out.println(response.getMessage());
-            if (response.getData() != null) {
-                System.out.println(response.getData());
-            }
-        } catch (IOException | ClassNotFoundException e){
+        } catch (IOException | ClassNotFoundException e) {
             System.out.println("Ошибка: " + e.getMessage());
         }
-
     }
 }
