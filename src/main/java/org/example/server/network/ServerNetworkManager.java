@@ -82,7 +82,7 @@ public class ServerNetworkManager {
         }
     }
 
-    private void handleRead(SelectionKey key, RequestHandler handler) throws IOException, ClassNotFoundException{
+    private void handleRead(SelectionKey key, RequestHandler handler) throws IOException, ClassNotFoundException {
         SocketChannel clientChannel = (SocketChannel) key.channel();
         ByteBuffer buffer = (ByteBuffer) key.attachment();
 
@@ -97,18 +97,36 @@ public class ServerNetworkManager {
         if (bytesRead > 0) {
             buffer.flip();
 
-            Request request = (Request) SerializationUtil.deserialize(buffer);
-            System.out.println("Получен запрос: " + request.getName());
+            while (true) {
 
-            Response response = handler.handle(request);
+                if (buffer.remaining() < 4) {
+                    break;
+                }
 
-            ByteBuffer responseBuffer = SerializationUtil.serialize(response);
-            while (responseBuffer.hasRemaining()) {
-                clientChannel.write(responseBuffer);
+                buffer.mark();
+                int length = buffer.getInt();
+
+                if (buffer.remaining() >= length) {
+
+                    buffer.reset();
+
+                    Request request = (Request) SerializationUtil.deserialize(buffer);
+                    System.out.println("Получен запрос: " + request.getName());
+
+                    Response response = handler.handle(request);
+
+                    ByteBuffer responseBuffer = SerializationUtil.serialize(response);
+                    while (responseBuffer.hasRemaining()) {
+                        clientChannel.write(responseBuffer);
+                    }
+                    System.out.println("Ответ отправлен: " + response.getMessage());
+
+                } else {
+                    buffer.reset();
+                    break;
+                }
             }
-            System.out.println("Ответ отправлен: " + response.getMessage());
-
-            buffer.clear();
+            buffer.compact();
         }
     }
 

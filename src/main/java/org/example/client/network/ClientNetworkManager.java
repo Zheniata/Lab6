@@ -4,9 +4,7 @@ import org.example.common.Request;
 import org.example.common.Response;
 import org.example.common.util.SerializationUtil;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.ByteBuffer;
@@ -23,8 +21,7 @@ import java.nio.channels.SocketChannel;
  */
 
 public class ClientNetworkManager {
-    private SocketChannel channel;
-    private static final int BUFFER_SIZE = 8192;
+    private Socket socket;
     private final String host;
     private final int port;
 
@@ -48,9 +45,8 @@ public class ClientNetworkManager {
 
         while (true) {
             try {
-                channel = SocketChannel.open();
-                channel.configureBlocking(true);
-                channel.connect(new InetSocketAddress(host, port));
+                socket = new Socket();
+                socket.connect(new InetSocketAddress(host, port));
 
                 System.out.println("Подключено к серверу " + host + ":" + port);
                 return;
@@ -81,16 +77,11 @@ public class ClientNetworkManager {
      */
 
     public Response sendRequest(Request request) throws IOException, ClassNotFoundException {
-        ByteBuffer requestBuffer = SerializationUtil.serialize(request);
-        while (requestBuffer.hasRemaining()) {
-            channel.write(requestBuffer);
-        }
+        OutputStream out = socket.getOutputStream();
+        InputStream in = socket.getInputStream();
 
-        ByteBuffer responseBuffer = ByteBuffer.allocate(BUFFER_SIZE);
-        channel.read(responseBuffer);
-        responseBuffer.flip();
-
-        return (Response) SerializationUtil.deserialize(responseBuffer);
+        SerializationUtil.serializeToStream(request, out);
+        return (Response) SerializationUtil.deserializeFromStream(in);
     }
 
     /**
@@ -102,7 +93,9 @@ public class ClientNetworkManager {
      */
 
     public void disconnect() throws IOException {
-        if (channel != null) channel.close();
+        if (socket != null && !socket.isClosed()) {
+            socket.close();
+        }
         System.out.println("Отключено от сервера");
     }
 
